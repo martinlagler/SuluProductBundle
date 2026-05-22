@@ -13,16 +13,16 @@ declare(strict_types=1);
 
 namespace Sulu\Product\Infrastructure\Sulu\HttpCache\EventSubscriber;
 
-use Sulu\Product\Domain\Event\ProductRemovedEvent;
-use Sulu\Product\Domain\Event\ProductWorkflowTransitionAppliedEvent;
-use Sulu\Product\Domain\Model\ProductDimensionContentInterface;
-use Sulu\Product\Domain\Model\ProductInterface;
 use Sulu\Bundle\HttpCacheBundle\Cache\CacheManagerInterface;
 use Sulu\Component\Webspace\Manager\WebspaceManagerInterface;
 use Sulu\Component\Webspace\Webspace;
 use Sulu\Content\Application\ContentAggregator\ContentAggregatorInterface;
 use Sulu\Content\Domain\Exception\ContentNotFoundException;
 use Sulu\Content\Domain\Model\WorkflowInterface;
+use Sulu\Product\Domain\Event\ProductRemovedEvent;
+use Sulu\Product\Domain\Event\ProductWorkflowTransitionAppliedEvent;
+use Sulu\Product\Domain\Model\ProductDimensionContentInterface;
+use Sulu\Product\Domain\Model\ProductInterface;
 use Sulu\Route\Application\Routing\Generator\RouteGeneratorInterface;
 use Sulu\Route\Domain\Repository\RouteRepositoryInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
