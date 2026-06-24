@@ -76,7 +76,7 @@ final class AttributeController implements SecuredControllerInterface
         }
 
         $listRepresentation = new PaginatedRepresentation(
-            $listBuilder->execute(),
+            self::normalizeDateTimes($listBuilder->execute()),
             AttributeInterface::RESOURCE_KEY,
             (int) $listBuilder->getCurrentPage(),
             (int) $listBuilder->getLimit(),
@@ -168,6 +168,33 @@ final class AttributeController implements SecuredControllerInterface
     }
 
     /** @return array<string, mixed> */
+    /**
+     * @param array<mixed> $rows
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private static function normalizeDateTimes(array $rows): array
+    {
+        $result = [];
+        foreach ($rows as $row) {
+            if (!\is_array($row)) {
+                continue; // @codeCoverageIgnore
+            }
+            foreach ($row as $key => $value) {
+                if ($value instanceof \DateTimeInterface) {
+                    $row[$key] = $value->format(\DateTimeInterface::ATOM);
+                }
+            }
+            /** @var array<string, mixed> $row */
+            $result[] = $row;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function serializeAttribute(?AttributeInterface $attribute, string $locale): array
     {
         if (null === $attribute) {
