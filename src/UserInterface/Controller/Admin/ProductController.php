@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Sulu\Product\UserInterface\Controller\Admin;
 
+use Sulu\Component\Rest\Exception\EntityNotFoundException;
 use Sulu\Component\Rest\ListBuilder\Doctrine\DoctrineListBuilder;
 use Sulu\Component\Rest\ListBuilder\Doctrine\DoctrineListBuilderFactoryInterface;
 use Sulu\Component\Rest\ListBuilder\Doctrine\FieldDescriptor\DoctrineFieldDescriptorInterface;
@@ -20,11 +21,18 @@ use Sulu\Component\Rest\ListBuilder\Metadata\FieldDescriptorFactoryInterface;
 use Sulu\Component\Rest\ListBuilder\PaginatedRepresentation;
 use Sulu\Component\Rest\RestHelperInterface;
 use Sulu\Component\Security\SecuredControllerInterface;
+use Sulu\Content\Application\ContentManager\ContentManagerInterface;
+use Sulu\Content\Domain\Exception\ContentNotFoundException;
+use Sulu\Content\Domain\Model\DimensionContentInterface;
+use Sulu\Content\Infrastructure\Doctrine\DimensionContentQueryEnhancer;
 use Sulu\Messenger\Infrastructure\Symfony\Messenger\FlushMiddleware\EnableFlushStamp;
+use Sulu\Product\Application\Message\ApplyWorkflowTransitionProductMessage;
+use Sulu\Product\Application\Message\CopyLocaleProductMessage;
 use Sulu\Product\Application\Message\CreateProductMessage;
 use Sulu\Product\Application\Message\ModifyProductMessage;
 use Sulu\Product\Application\Message\RemoveProductMessage;
 use Sulu\Product\Application\Message\RemoveProductTranslationMessage;
+use Sulu\Product\Application\Message\RestoreProductVersionMessage;
 use Sulu\Product\Domain\Exception\ProductNotFoundException;
 use Sulu\Product\Domain\Exception\RequiredProductAttributeMissingException;
 use Sulu\Product\Domain\Model\ProductInterface;
@@ -44,18 +52,20 @@ use Webmozart\Assert\InvalidArgumentException;
  * @internal
  *
  * @phpstan-import-type CreateProductMessageData from CreateProductMessage
+ * @phpstan-import-type ModifyProductMessageData from ModifyProductMessage
  */
-final class ProductDetailsController implements SecuredControllerInterface
+final class ProductController implements SecuredControllerInterface
 {
     use HandleTrait;
 
     public function __construct(
         private ProductRepositoryInterface $productRepository,
         MessageBusInterface $messageBus,
+        private NormalizerInterface $normalizer,
+        private ContentManagerInterface $contentManager,
         private FieldDescriptorFactoryInterface $fieldDescriptorFactory,
         private DoctrineListBuilderFactoryInterface $listBuilderFactory,
         private RestHelperInterface $restHelper,
-        private NormalizerInterface $normalizer,
     ) {
         $this->messageBus = $messageBus;
     }
@@ -85,36 +95,58 @@ final class ProductDetailsController implements SecuredControllerInterface
     public function getAction(Request $request, string $id): Response
     {
         $locale = $this->getLocale($request);
-        $product = $this->productRepository->findOneBy(['uuid' => $id]);
+        $dimensionAttributes = [
+            'locale' => $locale,
+            'stage' => DimensionContentInterface::STAGE_DRAFT,
+        ];
 
-        if (null === $product) {
-            return new JsonResponse(['detail' => 'Product not found.'], 404);
+        try {
+            $product = $this->productRepository->getOneBy(
+                ['uuid' => $id],
+                [
+                    ProductRepositoryInterface::SELECT_PRODUCT_CONTENT => [
+                        'dimensionAttributes' => $dimensionAttributes,
+                        'selects' => [DimensionContentQueryEnhancer::GROUP_SELECT_CONTENT_ADMIN => true],
+                    ],
+                ],
+            );
+        } catch (ProductNotFoundException $e) {
+            $exception = new EntityNotFoundException($e->getModel(), $id, $e);
+
+            return new JsonResponse($exception->toArray(), 404);
         }
 
-        /** @var array<string, mixed> $normalized */
-        $normalized = $this->normalizer->normalize($product, null, ['locale' => $locale]);
+        try {
+            $dimensionContent = $this->contentManager->resolve($product, $dimensionAttributes);
+        } catch (ContentNotFoundException) {
+            return new JsonResponse(['template' => ProductInterface::TEMPLATE_TYPE]);
+        }
 
-        return new JsonResponse($normalized);
+        $normalizedContent = $this->contentManager->normalize($dimensionContent);
+
+        return new JsonResponse($this->normalizer->normalize(
+            $normalizedContent,
+            'json',
+            ['sulu_admin' => true, 'sulu_admin_product' => true, 'sulu_admin_product_content' => true],
+        ));
     }
 
     public function postAction(Request $request): Response
     {
-        $data = $this->getData($request);
+        $data = $this->getCreateData($request);
         $message = new CreateProductMessage($data);
         /** @var ProductInterface $product */
         $product = $this->handle(new Envelope($message, [new EnableFlushStamp()]));
 
-        $locale = $this->getLocale($request);
-        /** @var array<string, mixed> $normalized */
-        $normalized = $this->normalizer->normalize($product, null, ['locale' => $locale]);
-
-        return new JsonResponse($normalized, 201);
+        return new JsonResponse(
+            $this->normalizer->normalize($product, 'json', ['locale' => $this->getLocale($request)]),
+            201,
+        );
     }
 
     public function putAction(Request $request, string $id): Response
     {
-        $data = $this->getData($request);
-        $message = new ModifyProductMessage(['uuid' => $id], $data);
+        $message = new ModifyProductMessage(['uuid' => $id], $this->getModifyData($request));
 
         try {
             $this->handle(new Envelope($message, [new EnableFlushStamp()]));
@@ -126,16 +158,9 @@ final class ProductDetailsController implements SecuredControllerInterface
             return new JsonResponse(['detail' => 'Invalid attribute value provided.'], 400);
         }
 
-        $product = $this->productRepository->findOneBy(['uuid' => $id]);
-        if (null === $product) {
-            return new JsonResponse(['detail' => 'Product not found.'], 404); // @codeCoverageIgnore
-        }
+        $this->handleAction($request, $id);
 
-        $locale = $this->getLocale($request);
-        /** @var array<string, mixed> $normalized */
-        $normalized = $this->normalizer->normalize($product, null, ['locale' => $locale]);
-
-        return new JsonResponse($normalized);
+        return $this->getAction($request, $id);
     }
 
     public function deleteAction(Request $request, string $id): Response
@@ -154,6 +179,41 @@ final class ProductDetailsController implements SecuredControllerInterface
         return new Response('', 204);
     }
 
+    public function postTriggerAction(Request $request, string $id): Response
+    {
+        $this->handleAction($request, $id);
+
+        return $this->getAction($request, $id);
+    }
+
+    public function getVersionsAction(Request $request, string $id): JsonResponse
+    {
+        $locale = $this->getLocale($request);
+
+        /** @var DoctrineFieldDescriptorInterface[] $fieldDescriptors */
+        $fieldDescriptors = $this->fieldDescriptorFactory->getFieldDescriptors('products_versions');
+        /** @var DoctrineListBuilder $listBuilder */
+        $listBuilder = $this->listBuilderFactory->create(ProductInterface::class);
+        $listBuilder->setParameter('locale', $locale);
+        $listBuilder->setParameter('id', $id);
+        $listBuilder->setIdField($fieldDescriptors['id']);
+        $listBuilder->sort($fieldDescriptors['version'], 'DESC');
+        $this->restHelper->initializeListBuilder($listBuilder, $fieldDescriptors);
+
+        $result = $listBuilder->execute();
+        $listRepresentation = new PaginatedRepresentation(
+            $result,
+            'products_versions',
+            $listBuilder->getCurrentPage(),
+            (int) $listBuilder->getLimit(),
+            $listBuilder->count(),
+        );
+
+        return new JsonResponse(
+            $this->normalizer->normalize($listRepresentation->toArray(), 'json'),
+        );
+    }
+
     public function getSecurityContext(): string
     {
         return ProductAdmin::SECURITY_CONTEXT;
@@ -167,6 +227,74 @@ final class ProductDetailsController implements SecuredControllerInterface
     /**
      * @return CreateProductMessageData
      */
+    private function getCreateData(Request $request): array
+    {
+        /** @var CreateProductMessageData $data */
+        $data = \array_replace(
+            $request->request->all(),
+            ['locale' => $this->getLocale($request)],
+        );
+
+        return $data;
+    }
+
+    /**
+     * @return ModifyProductMessageData
+     */
+    private function getModifyData(Request $request): array
+    {
+        /** @var ModifyProductMessageData $data */
+        $data = \array_replace(
+            $request->request->all(),
+            ['locale' => $this->getLocale($request)],
+        );
+
+        return $data;
+    }
+
+    private function handleAction(Request $request, string $uuid): void
+    {
+        $action = $request->query->get('action');
+
+        if (!$action || 'draft' === $action) {
+            return;
+        }
+
+        if ('copy_locale' === $action) {
+            $message = new CopyLocaleProductMessage(
+                ['uuid' => $uuid],
+                (string) $request->query->get('src'),
+                (string) $request->query->get('dest'),
+            );
+            $this->handle(new Envelope($message, [new EnableFlushStamp()]));
+
+            return;
+        }
+
+        if ('restore' === $action) {
+            $version = (int) $request->query->get('version');
+            if (!$version) {
+                throw new \InvalidArgumentException('The "version" query parameter is required for restoring a version.');
+            }
+            $message = new RestoreProductVersionMessage(
+                ['uuid' => $uuid],
+                $version,
+                $this->getLocale($request),
+                $request->query->all(),
+            );
+            $this->handle(new Envelope($message, [new EnableFlushStamp()]));
+
+            return;
+        }
+
+        $message = new ApplyWorkflowTransitionProductMessage(
+            ['uuid' => $uuid],
+            $this->getLocale($request),
+            $action,
+        );
+        $this->handle(new Envelope($message, [new EnableFlushStamp()]));
+    }
+
     /**
      * @param array<mixed> $rows
      *
@@ -189,19 +317,5 @@ final class ProductDetailsController implements SecuredControllerInterface
         }
 
         return $result;
-    }
-
-    /**
-     * @return CreateProductMessageData
-     */
-    private function getData(Request $request): array
-    {
-        /** @var CreateProductMessageData $data */
-        $data = \array_replace(
-            $request->request->all(),
-            ['locale' => $this->getLocale($request)],
-        );
-
-        return $data;
     }
 }

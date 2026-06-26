@@ -68,8 +68,10 @@ final class ProductFamilyController implements SecuredControllerInterface
         $this->restHelper->initializeListBuilder($listBuilder, $fieldDescriptors);
         $listBuilder->setParameter('locale', $this->getLocale($request));
 
+        $rows = self::normalizeDateTimes($listBuilder->execute());
+
         $listRepresentation = new PaginatedRepresentation(
-            self::normalizeDateTimes($listBuilder->execute()),
+            $rows,
             ProductFamilyInterface::RESOURCE_KEY,
             (int) $listBuilder->getCurrentPage(),
             (int) $listBuilder->getLimit(),
