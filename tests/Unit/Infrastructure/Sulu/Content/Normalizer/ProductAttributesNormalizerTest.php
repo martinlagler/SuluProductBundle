@@ -27,6 +27,7 @@ use Sulu\Product\Domain\Model\ProductDimensionContent;
 use Sulu\Product\Domain\Model\ProductDimensionContentInterface;
 use Sulu\Product\Domain\Model\ProductFamilyAttributeInterface;
 use Sulu\Product\Domain\Model\ProductFamilyInterface;
+use Sulu\Product\Domain\Repository\AttributeRepositoryInterface;
 use Sulu\Product\Infrastructure\Sulu\Content\Normalizer\ProductAttributesNormalizer;
 
 #[CoversClass(ProductAttributesNormalizer::class)]
@@ -36,10 +37,16 @@ class ProductAttributesNormalizerTest extends TestCase
 
     private ProductAttributesNormalizer $normalizer;
 
+    /** @var ObjectProphecy<AttributeRepositoryInterface> */
+    private ObjectProphecy $attributeRepository;
+
     protected function setUp(): void
     {
+        $this->attributeRepository = $this->prophesize(AttributeRepositoryInterface::class);
+
         $this->normalizer = new ProductAttributesNormalizer(
             new AttributeTypeRegistry([new NumberAttributeType()]),
+            $this->attributeRepository->reveal(),
         );
     }
 

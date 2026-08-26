@@ -554,6 +554,7 @@ final class SuluProductBundle extends AbstractBundle
             ->class(ProductAttributesNormalizer::class)
             ->args([
                 new Reference('sulu_product.attribute_type_registry'),
+                new Reference('sulu_product.attribute_repository'),
             ])
             ->tag('sulu_content.normalizer');
 
@@ -838,6 +839,7 @@ final class SuluProductBundle extends AbstractBundle
             ->class(ProductAttributeFormMetadataVisitor::class)
             ->args([
                 new Reference('sulu_product.product_family_repository'),
+                new Reference('sulu_product.attribute_repository'),
                 new Reference('sulu_product.attribute_field_factory'),
                 new Reference('sulu_admin.property_metadata_mapper_registry'),
                 new Reference('translator'),
@@ -848,6 +850,7 @@ final class SuluProductBundle extends AbstractBundle
             ->class(ProductVariantAttributeFormMetadataVisitor::class)
             ->args([
                 new Reference('sulu_product.product_family_repository'),
+                new Reference('sulu_product.attribute_repository'),
                 new Reference('sulu_product.attribute_field_factory'),
                 new Reference('sulu_admin.property_metadata_mapper_registry'),
                 new Reference('translator'),

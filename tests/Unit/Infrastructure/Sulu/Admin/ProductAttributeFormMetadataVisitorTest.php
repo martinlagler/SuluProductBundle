@@ -34,6 +34,7 @@ use Sulu\Product\Domain\Model\AttributeInterface;
 use Sulu\Product\Domain\Model\AttributeTranslationInterface;
 use Sulu\Product\Domain\Model\ProductFamilyAttributeInterface;
 use Sulu\Product\Domain\Model\ProductFamilyInterface;
+use Sulu\Product\Domain\Repository\AttributeRepositoryInterface;
 use Sulu\Product\Domain\Repository\ProductFamilyRepositoryInterface;
 use Sulu\Product\Infrastructure\Sulu\Admin\AttributeFieldFactory;
 use Sulu\Product\Infrastructure\Sulu\Admin\ProductAttributeFormMetadataVisitor;
@@ -48,12 +49,16 @@ class ProductAttributeFormMetadataVisitorTest extends TestCase
     /** @var ObjectProphecy<ProductFamilyRepositoryInterface> */
     private ObjectProphecy $productFamilyRepository;
 
+    /** @var ObjectProphecy<AttributeRepositoryInterface> */
+    private ObjectProphecy $attributeRepository;
+
     /** @var ObjectProphecy<FormMetadataLoaderInterface> */
     private ObjectProphecy $formMetadataLoader;
 
     protected function setUp(): void
     {
         $this->productFamilyRepository = $this->prophesize(ProductFamilyRepositoryInterface::class);
+        $this->attributeRepository = $this->prophesize(AttributeRepositoryInterface::class);
         $this->formMetadataLoader = $this->prophesize(FormMetadataLoaderInterface::class);
     }
 
@@ -72,6 +77,7 @@ class ProductAttributeFormMetadataVisitorTest extends TestCase
 
         return new ProductAttributeFormMetadataVisitor(
             $this->productFamilyRepository->reveal(),
+            $this->attributeRepository->reveal(),
             new AttributeFieldFactory(
                 new AttributeTypeRegistry([new NumberAttributeType()]),
                 $this->formMetadataLoader->reveal(),

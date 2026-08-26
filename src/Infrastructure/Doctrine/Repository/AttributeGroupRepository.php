@@ -101,8 +101,21 @@ final class AttributeGroupRepository implements AttributeGroupRepositoryInterfac
 
     public function findAll(): array
     {
+        // Fetch-joined: callers walk every attribute, which costs a query each otherwise.
+        // Translations stay unfiltered — callers fall back to the default locale.
         /** @var list<AttributeGroupInterface> $groups */
         $groups = $this->entityRepository->createQueryBuilder('attributeGroup')
+            ->addSelect('groupAttribute', 'attribute', 'attributeTranslation')
+            ->leftJoin('attributeGroup.groupAttributes', 'groupAttribute')
+            ->leftJoin('groupAttribute.attribute', 'attribute')
+            ->leftJoin('attribute.translations', 'attributeTranslation')
+            ->getQuery()
+            ->getResult();
+
+        // Separate query — joined above, group translations multiply the attribute rows.
+        $this->entityRepository->createQueryBuilder('attributeGroup')
+            ->addSelect('groupTranslation')
+            ->leftJoin('attributeGroup.translations', 'groupTranslation')
             ->getQuery()
             ->getResult();
 

@@ -16,11 +16,14 @@ namespace Sulu\Product\Infrastructure\Doctrine\Repository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\NoResultException;
+use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Sulu\Product\Domain\Exception\AttributeNotFoundException;
 use Sulu\Product\Domain\Model\Attribute;
 use Sulu\Product\Domain\Model\AttributeGroupInterface;
 use Sulu\Product\Domain\Model\AttributeInterface;
+use Sulu\Product\Domain\Model\ProductFamilyAttribute;
+use Sulu\Product\Domain\Model\ProductFamilyInterface;
 use Sulu\Product\Domain\Repository\AttributeRepositoryInterface;
 use Symfony\Component\Uid\Uuid;
 use Webmozart\Assert\Assert;
@@ -126,6 +129,40 @@ final class AttributeRepository implements AttributeRepositoryInterface
         }
 
         return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    public function preloadForFamily(ProductFamilyInterface $family): void
+    {
+        // Two queries — options and translations are both to-many and would multiply.
+        // Translations stay unfiltered — callers fall back to the default locale.
+        $this->createFamilyAttributeQueryBuilder($family)
+            ->addSelect('translation', 'attributeGroup')
+            ->leftJoin('attribute.translations', 'translation')
+            ->leftJoin('attribute.group', 'attributeGroup')
+            ->getQuery()
+            ->getResult();
+
+        $this->createFamilyAttributeQueryBuilder($family)
+            ->addSelect('option', 'optionTranslation')
+            ->leftJoin('attribute.options', 'option')
+            ->leftJoin('option.translations', 'optionTranslation')
+            ->getQuery()
+            ->getResult();
+    }
+
+    private function createFamilyAttributeQueryBuilder(ProductFamilyInterface $family): QueryBuilder
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('attribute')
+            ->from(Attribute::class, 'attribute')
+            ->innerJoin(
+                ProductFamilyAttribute::class,
+                'familyAttribute',
+                Join::WITH,
+                'familyAttribute.attribute = attribute',
+            )
+            ->where('familyAttribute.family = :family')
+            ->setParameter('family', $family);
     }
 
     public function findNextPositionInGroup(AttributeGroupInterface $group): int

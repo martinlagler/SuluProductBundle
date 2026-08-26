@@ -20,6 +20,7 @@ use Sulu\Bundle\AdminBundle\Metadata\SchemaMetadata\PropertyMetadata;
 use Sulu\Bundle\AdminBundle\Metadata\SchemaMetadata\PropertyMetadataMapperRegistry;
 use Sulu\Bundle\AdminBundle\Metadata\SchemaMetadata\SchemaMetadata;
 use Sulu\Product\Domain\Model\AttributeGroupInterface;
+use Sulu\Product\Domain\Repository\AttributeRepositoryInterface;
 use Sulu\Product\Domain\Repository\ProductFamilyRepositoryInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -36,6 +37,7 @@ class ProductVariantAttributeFormMetadataVisitor implements FormMetadataVisitorI
 
     public function __construct(
         private readonly ProductFamilyRepositoryInterface $productFamilyRepository,
+        private readonly AttributeRepositoryInterface $attributeRepository,
         private readonly AttributeFieldFactory $attributeFieldFactory,
         private readonly PropertyMetadataMapperRegistry $propertyMetadataMapperRegistry,
         private readonly TranslatorInterface $translator,
@@ -58,6 +60,8 @@ class ProductVariantAttributeFormMetadataVisitor implements FormMetadataVisitorI
         if (null === $family) {
             return;
         }
+
+        $this->attributeRepository->preloadForFamily($family);
 
         $items = $formMetadata->getItems();
 

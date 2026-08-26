@@ -16,6 +16,7 @@ namespace Sulu\Product\Domain\Repository;
 use Sulu\Product\Domain\Exception\AttributeNotFoundException;
 use Sulu\Product\Domain\Model\AttributeGroupInterface;
 use Sulu\Product\Domain\Model\AttributeInterface;
+use Sulu\Product\Domain\Model\ProductFamilyInterface;
 
 /**
  * @phpstan-type AttributeRepositoryFilters array{
@@ -43,6 +44,12 @@ interface AttributeRepositoryInterface
 
     /** @param array<string, mixed> $criteria */
     public function countBy(array $criteria): int;
+
+    /**
+     * Loads a family's attributes with translations, group and options up front.
+     * Call before iterating family attributes — each one costs a query otherwise.
+     */
+    public function preloadForFamily(ProductFamilyInterface $family): void;
 
     /** @internal TODO: move to a Doctrine listener */
     public function findNextPositionInGroup(AttributeGroupInterface $group): int;

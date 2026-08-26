@@ -16,11 +16,13 @@ namespace Sulu\Product\Infrastructure\Sulu\Content\Normalizer;
 use Sulu\Content\Application\ContentNormalizer\Normalizer\NormalizerInterface;
 use Sulu\Product\Application\AttributeType\AttributeTypeRegistry;
 use Sulu\Product\Domain\Model\ProductDimensionContentInterface;
+use Sulu\Product\Domain\Repository\AttributeRepositoryInterface;
 
 class ProductAttributesNormalizer implements NormalizerInterface
 {
     public function __construct(
         private readonly AttributeTypeRegistry $attributeTypeRegistry,
+        private readonly AttributeRepositoryInterface $attributeRepository,
     ) {
     }
 
@@ -51,6 +53,8 @@ class ProductAttributesNormalizer implements NormalizerInterface
 
         $productFamily = $object->getProductFamily();
         if (null !== $productFamily) {
+            $this->attributeRepository->preloadForFamily($productFamily);
+
             foreach ($productFamily->getFamilyAttributes() as $familyAttribute) {
                 $attribute = $familyAttribute->getAttribute();
                 $attributesMap[$attribute->getId()] = null;
