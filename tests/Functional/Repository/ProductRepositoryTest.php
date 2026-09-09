@@ -638,10 +638,7 @@ class ProductRepositoryTest extends SuluTestCase
             ['position' => 'asc', 'created' => 'asc', 'uuid' => 'asc'],
         );
 
-        $this->assertStringEndsWith(
-            'ORDER BY product.position asc, product.created asc, product.uuid asc',
-            $qb->getDQL(),
-        );
+        $this->assertOrderBy('product.position asc, product.created asc, product.uuid asc', $qb);
         // getDQL() only concatenates the parts; an unmapped field fails when the query is parsed.
         $qb->getQuery()->getResult();
     }
@@ -654,10 +651,7 @@ class ProductRepositoryTest extends SuluTestCase
             ['position' => 'asc', 'title' => 'desc'],
         );
 
-        $this->assertStringEndsWith(
-            'ORDER BY product.position asc, filterDimensionContent.title desc',
-            $qb->getDQL(),
-        );
+        $this->assertOrderBy('product.position asc, filterDimensionContent.title desc', $qb);
         $qb->getQuery()->getResult();
     }
 
@@ -677,13 +671,25 @@ class ProductRepositoryTest extends SuluTestCase
             ],
         );
 
-        $this->assertStringEndsWith(
-            'ORDER BY product.uuid asc, product.position asc, product.created asc, product.changed desc,'
+        $this->assertOrderBy(
+            'product.uuid asc, product.position asc, product.created asc, product.changed desc,'
             . ' filterDimensionContent.title asc, filterDimensionContent.authored desc,'
             . ' filterDimensionContent.workflowPublished desc',
-            $qb->getDQL(),
+            $qb,
         );
         $qb->getQuery()->getResult();
+    }
+
+    /** doctrine/orm 3.7 renders the direction upper case, older versions echo the string they were given. */
+    private function assertOrderBy(string $expected, QueryBuilder $qb): void
+    {
+        $dql = (string) \preg_replace_callback(
+            '/ (ASC|DESC)\b/i',
+            static fn (array $match): string => ' ' . \strtolower($match[1]),
+            $qb->getDQL(),
+        );
+
+        $this->assertStringEndsWith('ORDER BY ' . $expected, $dql);
     }
 
     /** The clause order decides the row order, not just the DQL string. */
@@ -742,7 +748,7 @@ class ProductRepositoryTest extends SuluTestCase
             ['nonExistingField' => 'asc', 'position' => 'asc'],
         );
 
-        $this->assertStringEndsWith('ORDER BY product.position asc', $qb->getDQL());
+        $this->assertOrderBy('product.position asc', $qb);
         $qb->getQuery()->getResult();
     }
 

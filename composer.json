@@ -3,14 +3,6 @@
     "type": "symfony-bundle",
     "description": "Sulu Product Bundle",
     "license": "MIT",
-    "repositories": [
-        {
-            "name": "sulu-fork",
-            "type": "vcs",
-            "url": "https://github.com/Prokyonn/sulu.git",
-            "no-api": true
-        }
-    ],
     "require": {
         "php": "^8.2",
         "ext-ctype": "*",
@@ -21,7 +13,7 @@
         "doctrine/orm": "^2.17.3 || ^3.3",
         "psr/container": "^1.1 || ^2.0",
         "sulu/messenger": "^1.0",
-        "sulu/sulu": "dev-feature/content-resolver-path as 3.0.9",
+        "sulu/sulu": "^3.1@dev",
         "symfony/config": "^6.4 || ^7.1 || ^8.0",
         "symfony/dependency-injection": "^6.4 || ^7.1 || ^8.0",
         "symfony/event-dispatcher": "^6.4 || ^7.1 || ^8.0",

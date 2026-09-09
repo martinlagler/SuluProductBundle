@@ -138,6 +138,86 @@ class AttributeControllerTest extends SuluTestCase
         $this->assertSame(['attr-a1', 'attr-a2'], $keys);
     }
 
+    public function testGetListSortsByGroupNameThenPosition(): void
+    {
+        self::purgeDatabase();
+        $techno = $this->createGroup('Techno');
+        $general = $this->createGroup('Attributes');
+
+        // Positions count per group, so created interleaved they overlap across groups.
+        foreach ([['techno-a', $techno], ['attr-a', $general], ['techno-b', $techno], ['attr-b', $general]] as [$key, $group]) {
+            $this->client->request(
+                'POST',
+                '/admin/api/attributes.json?locale=en',
+                [],
+                [],
+                [],
+                \json_encode(['locale' => 'en', 'key' => $key, 'name' => $key, 'type' => 'text', 'group' => $group]) ?: null,
+            );
+            $this->assertHttpStatusCode(201, $this->client->getResponse());
+        }
+
+        $this->client->request('GET', '/admin/api/attributes.json?locale=en');
+        $this->assertHttpStatusCode(200, $this->client->getResponse());
+
+        $data = \json_decode((string) $this->client->getResponse()->getContent(), true);
+        $this->assertIsArray($data);
+        /** @var array{_embedded: array{attributes: list<array{key: string}>}} $data */
+        $this->assertSame(
+            ['attr-a', 'attr-b', 'techno-a', 'techno-b'],
+            \array_column($data['_embedded']['attributes'], 'key'),
+        );
+    }
+
+    public function testListAlwaysReturnsGroupFieldsAndPosition(): void
+    {
+        // The "product_family_attributes" field groups the rows by these, and the admin's list
+        // requests only visible columns, so the controller adds them regardless of "fields".
+        self::purgeDatabase();
+        $groupId = $this->createGroup('Group For Fields');
+
+        $this->client->request(
+            'POST',
+            '/admin/api/attributes.json?locale=en',
+            [],
+            [],
+            [],
+            \json_encode([
+                'locale' => 'en',
+                'key' => 'probe',
+                'name' => 'Probe',
+                'type' => 'text',
+                'group' => $groupId,
+            ]) ?: null,
+        );
+        $this->assertHttpStatusCode(201, $this->client->getResponse());
+        $postData = \json_decode((string) $this->client->getResponse()->getContent(), true);
+        $this->assertIsArray($postData);
+        $id = $postData['id'];
+        $this->assertIsString($id);
+
+        $this->client->request(
+            'GET',
+            '/admin/api/attributes.json?locale=en&ids=' . $id . '&fields=id,name',
+        );
+        $response = $this->client->getResponse();
+        $this->assertHttpStatusCode(200, $response);
+
+        /** @var array{_embedded: array{attributes: list<array<string, mixed>>}} $data */
+        $data = \json_decode((string) $response->getContent(), true);
+        $item = $data['_embedded']['attributes'][0];
+
+        $this->assertSame($id, $item['id']);
+        $this->assertSame('Probe', $item['name']);
+        $this->assertSame($groupId, $item['group']);
+        $this->assertSame('Group For Fields', $item['groupName']);
+        $this->assertSame(0, $item['position']);
+
+        // groupName is a visible, sortable column in the list and the selection overlay.
+        $this->client->request('GET', '/admin/api/attributes.json?locale=en&sortBy=groupName&sortOrder=asc');
+        $this->assertHttpStatusCode(200, $this->client->getResponse());
+    }
+
     public function testPost(): string
     {
         self::purgeDatabase();

@@ -100,6 +100,16 @@ class ProductResolver implements ResolverInterface
         return 'product.';
     }
 
+    public function getType(): string
+    {
+        return 'product';
+    }
+
+    public function getOutputPath(): string
+    {
+        return '[product]';
+    }
+
     /**
      * Always resolved for a reference; everything else is opt-in. `image` and `shortDescription`
      * are template fields rather than fixed columns, so a project whose template drops them

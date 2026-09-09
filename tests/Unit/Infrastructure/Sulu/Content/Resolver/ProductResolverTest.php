@@ -24,6 +24,14 @@ use Sulu\Product\Infrastructure\Sulu\Content\Resolver\ProductResolver;
 #[CoversClass(ProductResolver::class)]
 class ProductResolverTest extends ProductResolverTestCase
 {
+    public function testIsKeyedAsProductAtTheRoot(): void
+    {
+        $resolver = $this->createResolver();
+
+        self::assertSame('product', $resolver->getType());
+        self::assertSame('[product]', $resolver->getOutputPath());
+    }
+
     public function testReturnsNullForNonProductContent(): void
     {
         self::assertNull($this->createResolver()->resolve($this->createStub(DimensionContentInterface::class)));
