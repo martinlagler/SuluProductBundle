@@ -67,7 +67,13 @@ final class ProductFamilyMapper implements ProductFamilyMapperInterface
         $existingMap = [];
         foreach ($family->getFamilyAttributes() as $familyAttribute) {
             $uuid = $familyAttribute->getAttribute()->getUuid();
-            if (null === $uuid || !isset($submitted[$uuid])) {
+            // A persisted attribute always has a uuid; skipping keeps an unexpected null from
+            // reading as "not submitted" and silently removing the assignment.
+            if (null === $uuid) {
+                continue;
+            }
+
+            if (!isset($submitted[$uuid])) {
                 $family->removeFamilyAttribute($familyAttribute);
 
                 continue;

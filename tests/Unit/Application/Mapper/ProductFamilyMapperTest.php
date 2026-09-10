@@ -160,6 +160,26 @@ class ProductFamilyMapperTest extends TestCase
         self::assertCount(0, $family->getFamilyAttributes());
     }
 
+    public function testMapAttributesKeepsExistingAttributeWithoutUuid(): void
+    {
+        $attribute = $this->prophesize(AttributeInterface::class);
+        $attribute->getUuid()->willReturn(null);
+
+        $family = new ProductFamily();
+        $existing = new ProductFamilyAttribute($family, $attribute->reveal());
+        $family->addFamilyAttribute($existing);
+
+        $message = new ModifyProductFamilyMessage(
+            ['uuid' => 'family-uuid'],
+            ['locale' => 'en', 'name' => 'Family'],
+        );
+
+        $this->createMapper()->mapProductFamilyData($family, $message);
+
+        self::assertCount(1, $family->getFamilyAttributes());
+        self::assertSame($existing, $family->getFamilyAttributes()[0]);
+    }
+
     public function testMapAttributesSkipsUuidUnknownToRepository(): void
     {
         $family = new ProductFamily();

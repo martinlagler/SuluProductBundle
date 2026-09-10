@@ -70,6 +70,8 @@ final class AttributeController implements SecuredControllerInterface
         $listBuilder->setIdField($fieldDescriptors['id']);
         $this->restHelper->initializeListBuilder($listBuilder, $fieldDescriptors);
 
+        // The "product_family_attributes" form field groups the rows by these three, but
+        // setSelectFields() drops group and position because they are visibility="never".
         foreach (['group', 'groupName', 'position'] as $fieldName) {
             $listBuilder->addSelectField($fieldDescriptors[$fieldName]);
         }

@@ -229,47 +229,6 @@ class ProductFamilyControllerTest extends TestCase
         $this->assertSame(409, $response->getStatusCode());
     }
 
-    public function testPostActionReturns422WhenNoSubmittedAttributeParses(): void
-    {
-        $this->messageBus->dispatch(Argument::any(), Argument::any())->shouldNotBeCalled();
-
-        $request = new Request(
-            ['locale' => 'en'],
-            [
-                'name' => 'New Family',
-                // old client shape: a map of attributeId => flags, no "id" key on any entry
-                'attributes' => ['12' => ['enabled' => true, 'required' => false]],
-            ],
-        );
-
-        $response = $this->createController()->postAction($request);
-
-        $this->assertSame(422, $response->getStatusCode());
-        $data = \json_decode((string) $response->getContent(), true);
-        $this->assertIsArray($data);
-        $this->assertArrayHasKey('detail', $data);
-    }
-
-    public function testPutActionReturns422WhenNoSubmittedAttributeParses(): void
-    {
-        $this->messageBus->dispatch(Argument::any(), Argument::any())->shouldNotBeCalled();
-
-        $request = new Request(
-            ['locale' => 'en'],
-            [
-                'name' => 'Family',
-                'attributes' => ['12' => ['enabled' => true, 'required' => false]],
-            ],
-        );
-
-        $response = $this->createController()->putAction($request, 'family-uuid');
-
-        $this->assertSame(422, $response->getStatusCode());
-        $data = \json_decode((string) $response->getContent(), true);
-        $this->assertIsArray($data);
-        $this->assertArrayHasKey('detail', $data);
-    }
-
     public function testPutActionReturns200OnSuccess(): void
     {
         $family = new ProductFamily();

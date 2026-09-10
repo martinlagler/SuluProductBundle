@@ -25,7 +25,6 @@ use Sulu\Messenger\Infrastructure\Symfony\Messenger\FlushMiddleware\EnableFlushS
 use Sulu\Product\Application\Message\CreateProductFamilyMessage;
 use Sulu\Product\Application\Message\ModifyProductFamilyMessage;
 use Sulu\Product\Application\Message\RemoveProductFamilyMessage;
-use Sulu\Product\Domain\Exception\InvalidProductFamilyAttributesException;
 use Sulu\Product\Domain\Exception\ProductFamilyHasProductsException;
 use Sulu\Product\Domain\Exception\ProductFamilyNotFoundException;
 use Sulu\Product\Domain\Model\ProductFamilyInterface;
@@ -100,11 +99,7 @@ final class ProductFamilyController implements SecuredControllerInterface
 
     public function postAction(Request $request): Response
     {
-        try {
-            $message = new CreateProductFamilyMessage($this->getData($request));
-        } catch (InvalidProductFamilyAttributesException $e) {
-            return new JsonResponse(['detail' => $e->getMessage()], 422);
-        }
+        $message = new CreateProductFamilyMessage($this->getData($request));
 
         try {
             /** @var ProductFamilyInterface $family */
@@ -122,11 +117,7 @@ final class ProductFamilyController implements SecuredControllerInterface
 
     public function putAction(Request $request, string $id): Response
     {
-        try {
-            $message = new ModifyProductFamilyMessage(['uuid' => $id], $this->getData($request));
-        } catch (InvalidProductFamilyAttributesException $e) {
-            return new JsonResponse(['detail' => $e->getMessage()], 422);
-        }
+        $message = new ModifyProductFamilyMessage(['uuid' => $id], $this->getData($request));
 
         try {
             /** @var ProductFamilyInterface $family */
@@ -190,17 +181,12 @@ final class ProductFamilyController implements SecuredControllerInterface
 
     /**
      * @return list<array{id: string, required: bool, variantSpecific: bool}>
-     *
-     * @throws InvalidProductFamilyAttributesException if "attributes" is submitted non-empty but no
-     *                                                 entry parses, which would otherwise be
-     *                                                 indistinguishable from "remove everything"
      */
     private function extractAttributes(Request $request): array
     {
-        $rawAttributes = $request->request->all('attributes');
         $attributes = [];
 
-        foreach ($rawAttributes as $attribute) {
+        foreach ($request->request->all('attributes') as $attribute) {
             if (!\is_array($attribute) || !isset($attribute['id']) || !\is_string($attribute['id'])) {
                 continue;
             }
@@ -210,10 +196,6 @@ final class ProductFamilyController implements SecuredControllerInterface
                 'required' => (bool) ($attribute['required'] ?? false),
                 'variantSpecific' => (bool) ($attribute['variantSpecific'] ?? false),
             ];
-        }
-
-        if ([] !== $rawAttributes && [] === $attributes) {
-            throw new InvalidProductFamilyAttributesException();
         }
 
         return $attributes;
