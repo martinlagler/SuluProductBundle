@@ -87,9 +87,8 @@ class ProductResolverAssociationsTest extends SuluTestCase
 
         $result = $this->contentResolver->resolve($dimensionContent);
 
-        self::assertArrayHasKey('product', $result);
-        $productData = $result['product'];
-        self::assertIsArray($productData);
+        self::assertArrayHasKey('product', $result['extension']);
+        $productData = $result['extension']['product'];
         self::assertArrayHasKey('associations', $productData);
         $associationsData = $productData['associations'];
         self::assertIsArray($associationsData);
@@ -130,9 +129,8 @@ class ProductResolverAssociationsTest extends SuluTestCase
 
         $result = $this->contentResolver->resolve($dimensionContent);
 
-        self::assertArrayHasKey('product', $result);
-        $productData = $result['product'];
-        self::assertIsArray($productData);
+        self::assertArrayHasKey('product', $result['extension']);
+        $productData = $result['extension']['product'];
         $associationsData = $productData['associations'];
         self::assertIsArray($associationsData);
 
@@ -195,9 +193,8 @@ class ProductResolverAssociationsTest extends SuluTestCase
 
         $result = $this->contentResolver->resolve($dimensionContent);
 
-        self::assertArrayHasKey('product', $result);
-        $productData = $result['product'];
-        self::assertIsArray($productData);
+        self::assertArrayHasKey('product', $result['extension']);
+        $productData = $result['extension']['product'];
         $associationsData = $productData['associations'];
         self::assertIsArray($associationsData);
 

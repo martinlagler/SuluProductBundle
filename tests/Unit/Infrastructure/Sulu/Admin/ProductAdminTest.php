@@ -276,7 +276,8 @@ class ProductAdminTest extends TestCase
         $this->assertSame("type == 'product_with_variants'", $view->getOption('tabCondition'));
         $this->assertSame(['id' => 'parentId'], $view->getOption('routerAttributesToListRequest'));
         $this->assertSame(['id' => 'parentId'], $view->getOption('routerAttributesToFormRequest'));
-        $this->assertNull($view->getOption('routerAttributesToFormMetadata'));
+        // the variant form's JSON schema needs the parent to know the family
+        $this->assertSame(['id' => 'parentId'], $view->getOption('routerAttributesToFormMetadata'));
         $this->assertSame(ProductAdmin::EDIT_TABS_VIEW, $view->getParent());
     }
 

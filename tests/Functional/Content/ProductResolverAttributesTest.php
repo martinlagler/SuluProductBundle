@@ -108,9 +108,8 @@ class ProductResolverAttributesTest extends SuluTestCase
 
         $result = $this->contentResolver->resolve($dimensionContent);
 
-        self::assertArrayHasKey('product', $result);
-        $productData = $result['product'];
-        self::assertIsArray($productData);
+        self::assertArrayHasKey('product', $result['extension']);
+        $productData = $result['extension']['product'];
         self::assertArrayHasKey('attributes', $productData);
 
         $attributes = $productData['attributes'];

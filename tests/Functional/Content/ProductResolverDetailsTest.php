@@ -81,9 +81,8 @@ class ProductResolverDetailsTest extends SuluTestCase
 
         $result = $this->contentResolver->resolve($dimensionContent);
 
-        self::assertArrayHasKey('product', $result);
-        $productData = $result['product'];
-        self::assertIsArray($productData);
+        self::assertArrayHasKey('product', $result['extension']);
+        $productData = $result['extension']['product'];
         self::assertSame('SKU-FE', $productData['code']);
         self::assertSame('available', $productData['status']);
         self::assertSame('<p>hi</p>', $productData['shortDescription']);
@@ -114,9 +113,8 @@ class ProductResolverDetailsTest extends SuluTestCase
 
         $result = $this->contentResolver->resolve($dimensionContent);
 
-        self::assertArrayHasKey('product', $result);
-        $productData = $result['product'];
-        self::assertIsArray($productData);
+        self::assertArrayHasKey('product', $result['extension']);
+        $productData = $result['extension']['product'];
         $family = $productData['productFamily'];
         self::assertIsArray($family);
         self::assertSame('XLR', $family['name']);
@@ -144,9 +142,8 @@ class ProductResolverDetailsTest extends SuluTestCase
 
         $result = $this->contentResolver->resolve($dimensionContent);
 
-        self::assertArrayHasKey('product', $result);
-        $productData = $result['product'];
-        self::assertIsArray($productData);
+        self::assertArrayHasKey('product', $result['extension']);
+        $productData = $result['extension']['product'];
 
         // the wire-shape id survives to the resource loader and resolves to the real media
         $image = $productData['image'];

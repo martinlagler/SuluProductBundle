@@ -209,6 +209,7 @@ class ProductAdmin extends Admin
                 ->setTabCondition(\sprintf("type == '%s'", ProductInterface::TYPE_PRODUCT_WITH_VARIANTS))
                 ->addRouterAttributesToListRequest(['id' => 'parentId'])
                 ->addRouterAttributesToFormRequest(['id' => 'parentId'])
+                ->addRouterAttributesToFormMetadata(['id' => 'parentId'])
                 ->addToolbarActions($variantsToolbarActions)
                 ->setParent(static::EDIT_TABS_VIEW),
         );

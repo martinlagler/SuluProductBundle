@@ -67,7 +67,7 @@ class ProductAttributesMetadataTest extends SuluTestCase
         $this->assertHttpStatusCode(200, $response);
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
 
-        /** @var array{form: array<string, array{label: string, items: array<string, array{type: string, label: string, required: bool}>}>, schema: array{allOf: array{0: mixed, 1: array{properties: array<string, mixed>, required: list<string>}}}} $shared */
+        /** @var array{form: array<string, array{label: string, items: array<string, array{type: string, label: string, required: bool}>}>, schema: array<string, mixed>} $shared */
         $shared = \json_decode((string) $response->getContent(), true);
         $this->assertCount(1, $shared['form']);
         $section = \reset($shared['form']);
@@ -79,8 +79,7 @@ class ProductAttributesMetadataTest extends SuluTestCase
         $this->assertTrue($field['required']);
         $fieldName = (string) \array_key_first($section['items']);
         $this->assertStringStartsWith('attribute_', $fieldName);
-        $this->assertSame([$fieldName], $shared['schema']['allOf'][1]['required']);
-        $this->assertArrayHasKey($fieldName, $shared['schema']['allOf'][1]['properties']);
+        $this->assertSame(['type' => ['number', 'string', 'boolean', 'object', 'array', 'null']], $shared['schema']);
 
         $this->client->request('GET', '/admin/metadata/form/product_attributes?productFamily=' . $family['id'] . '&variant=true');
         $this->assertHttpStatusCode(200, $this->client->getResponse());
@@ -92,6 +91,43 @@ class ProductAttributesMetadataTest extends SuluTestCase
         $this->assertCount(1, $axisSection['items']);
         $axisField = \reset($axisSection['items']);
         $this->assertSame('Colour', $axisField['label']);
+    }
+
+    public function testDetailsFormSchemaValidatesTheAttributesOfTheSelectedFamily(): void
+    {
+        $weight = $this->createAttribute('weight', 'Weight', 'Dimensions');
+
+        $this->client->request('POST', '/admin/api/product-families.json?locale=en', [], [], [], \json_encode([
+            'locale' => 'en',
+            'name' => 'Shoes',
+            'description' => null,
+            'attributes' => [['id' => $weight, 'required' => true, 'variantSpecific' => false]],
+        ]) ?: null);
+        $this->assertHttpStatusCode(201, $this->client->getResponse());
+        /** @var array{id: string} $family */
+        $family = \json_decode((string) $this->client->getResponse()->getContent(), true);
+
+        // the schema is keyed by the attribute's integer id, like the submitted values
+        $this->client->request('GET', '/admin/metadata/form/product_attributes?productFamily=' . $family['id']);
+        /** @var array{form: array<string, array{items: array<string, mixed>}>} $attributesForm */
+        $attributesForm = \json_decode((string) $this->client->getResponse()->getContent(), true);
+        $section = \reset($attributesForm['form']);
+        $this->assertIsArray($section);
+        $weightId = \substr((string) \array_key_first($section['items']), \strlen('attribute_'));
+
+        $this->client->request('GET', '/admin/metadata/form/product_details');
+        $response = $this->client->getResponse();
+        $this->assertHttpStatusCode(200, $response);
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+        /** @var array{schema: mixed} $details */
+        $details = \json_decode((string) $response->getContent(), true);
+
+        $encoded = \json_encode($details['schema']) ?: '';
+        $this->assertStringContainsString(
+            '"if":{"type":"object","properties":{"productFamily":{"const":"' . $family['id'] . '"}},"required":["productFamily"]},'
+            . '"then":{"type":"object","properties":{"attributes":{"type":"object","properties":{"' . $weightId . '":{"type":"string","minLength":1}},"required":["' . $weightId . '"]}},"required":["attributes"]}',
+            $encoded,
+        );
     }
 
     public function testMetadataWithoutSelectorIsEmpty(): void

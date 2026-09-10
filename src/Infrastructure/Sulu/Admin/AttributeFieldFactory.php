@@ -16,6 +16,8 @@ namespace Sulu\Product\Infrastructure\Sulu\Admin;
 use Sulu\Bundle\AdminBundle\Metadata\FormMetadata\FieldMetadata;
 use Sulu\Bundle\AdminBundle\Metadata\FormMetadata\FormMetadata;
 use Sulu\Bundle\AdminBundle\Metadata\FormMetadata\FormMetadataLoaderInterface;
+use Sulu\Bundle\AdminBundle\Metadata\SchemaMetadata\PropertyMetadata;
+use Sulu\Bundle\AdminBundle\Metadata\SchemaMetadata\PropertyMetadataMapperRegistry;
 use Sulu\Product\Application\AttributeType\AttributeTypeRegistry;
 use Sulu\Product\Domain\Measurement\MeasurementRegistry;
 use Sulu\Product\Domain\Model\ProductFamilyAttributeInterface;
@@ -35,7 +37,27 @@ class AttributeFieldFactory
         private readonly AttributeTypeRegistry $attributeTypeRegistry,
         private readonly FormMetadataLoaderInterface $formMetadataLoader,
         private readonly MeasurementRegistry $measurementRegistry,
+        private readonly PropertyMetadataMapperRegistry $propertyMetadataMapperRegistry,
     ) {
+    }
+
+    /**
+     * The JSON schema of the attribute's value, keyed by attribute id like the submitted values.
+     *
+     * @return PropertyMetadata|null null when the attribute has no field
+     */
+    public function buildSchemaProperty(ProductFamilyAttributeInterface $familyAttribute, string $locale): ?PropertyMetadata
+    {
+        $field = $this->build($familyAttribute, $locale);
+        if (null === $field) {
+            return null;
+        }
+
+        $field = $this->cloneFieldWithName($field, (string) $familyAttribute->getAttribute()->getId());
+
+        return $this->propertyMetadataMapperRegistry->has($field->getType())
+            ? $this->propertyMetadataMapperRegistry->get($field->getType())->mapPropertyMetadata($field)
+            : new PropertyMetadata($field->getName(), $field->isRequired());
     }
 
     /**
@@ -119,6 +141,7 @@ class AttributeFieldFactory
         $field->setMaxOccurs($template->getMaxOccurs());
         $field->setSpaceAfter($template->getSpaceAfter());
         $field->setOnInvalid($template->getOnInvalid());
+        $field->setRequired($template->isRequired());
         $field->setTags($template->getTags());
 
         foreach ($template->getOptions() as $option) {

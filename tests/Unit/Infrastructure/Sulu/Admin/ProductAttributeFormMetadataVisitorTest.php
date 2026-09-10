@@ -24,7 +24,6 @@ use Sulu\Bundle\AdminBundle\Metadata\FormMetadata\FormMetadataLoaderInterface;
 use Sulu\Bundle\AdminBundle\Metadata\FormMetadata\SectionMetadata;
 use Sulu\Bundle\AdminBundle\Metadata\SchemaMetadata\PropertyMetadataMapper\NumberPropertyMetadataMapper;
 use Sulu\Bundle\AdminBundle\Metadata\SchemaMetadata\PropertyMetadataMapperRegistry;
-use Sulu\Bundle\AdminBundle\Metadata\SchemaMetadata\SchemaMetadata;
 use Sulu\Product\Application\AttributeType\AttributeTypeRegistry;
 use Sulu\Product\Application\AttributeType\NumberAttributeType;
 use Sulu\Product\Domain\Measurement\MeasurementRegistry;
@@ -75,9 +74,9 @@ class ProductAttributeFormMetadataVisitorTest extends TestCase
                 new AttributeTypeRegistry([new NumberAttributeType()]),
                 $this->formMetadataLoader->reveal(),
                 new MeasurementRegistry(),
+                new PropertyMetadataMapperRegistry($mapperContainer),
             ),
             $translator,
-            new PropertyMetadataMapperRegistry($mapperContainer),
         );
     }
 
@@ -231,43 +230,6 @@ class ProductAttributeFormMetadataVisitorTest extends TestCase
         self::assertSame('Voltage (V)', $voltage->getLabel('en'));
 
         self::assertFalse($form->isCacheable());
-    }
-
-    public function testSetsValidationSchemaKeyedByFieldName(): void
-    {
-        $dimensions = $this->group(1, 'Dimensions');
-        $this->productFamilyRepository->findOneBy(['uuid' => 'family-1'], self::FAMILY_SELECT)->willReturn($this->family([
-            $this->familyAttribute(7, 'Weight', $dimensions, false, true, ['min' => 0, 'max' => 10]),
-            $this->familyAttribute(8, 'Colour', $dimensions, true),
-            $this->familyAttribute(9, 'Voltage', $dimensions),
-        ]));
-        $form = $this->form();
-
-        $this->visitor()->visitFormMetadata($form, 'en', ['productFamily' => 'family-1']);
-
-        self::assertSame([
-            'allOf' => [
-                ['type' => ['number', 'string', 'boolean', 'object', 'array', 'null']],
-                [
-                    'type' => 'object',
-                    'properties' => [
-                        'attribute_7' => ['type' => 'number', 'minimum' => 0.0, 'maximum' => 10.0],
-                        'attribute_9' => ['anyOf' => [['type' => 'null'], ['type' => 'number']]],
-                    ],
-                    'required' => ['attribute_7'],
-                ],
-            ],
-        ], $form->getSchema()->toJsonSchema());
-    }
-
-    public function testLeavesTheSchemaAloneWithoutAttributes(): void
-    {
-        $this->productFamilyRepository->findOneBy(['uuid' => 'family-1'], self::FAMILY_SELECT)->willReturn($this->family([]));
-        $form = $this->form();
-
-        $this->visitor()->visitFormMetadata($form, 'en', ['productFamily' => 'family-1']);
-
-        self::assertEquals(new SchemaMetadata(), $form->getSchema());
     }
 
     /**

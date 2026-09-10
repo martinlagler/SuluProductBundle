@@ -104,9 +104,8 @@ class ProductResolverVariantsTest extends SuluTestCase
 
         $result = $this->contentResolver->resolve($parentContent);
 
-        self::assertArrayHasKey('product', $result);
-        $productData = $result['product'];
-        self::assertIsArray($productData);
+        self::assertArrayHasKey('product', $result['extension']);
+        $productData = $result['extension']['product'];
         self::assertArrayHasKey('variants', $productData);
 
         $variants = $productData['variants'];
@@ -122,15 +121,19 @@ class ProductResolverVariantsTest extends SuluTestCase
         self::assertIsArray($variant2Data);
 
         $variant1Content = $variant1Data['content'];
-        $variant2Product = $variant2Data['product'];
-        $variant1Product = $variant1Data['product'];
+        $variant1Extension = $variant1Data['extension'];
+        $variant2Extension = $variant2Data['extension'];
         self::assertIsArray($variant1Content);
+        self::assertIsArray($variant1Extension);
+        self::assertIsArray($variant2Extension);
+        $variant1Product = $variant1Extension['product'];
+        $variant2Product = $variant2Extension['product'];
         self::assertIsArray($variant1Product);
         self::assertIsArray($variant2Product);
 
         // No property projection, so a variant keeps the page's own shape: the template data under
-        // `content`, the master data under `product`. `product.variants` is a top-level root key,
-        // so each resolved variant also keeps its `{resource, content, view, extension}` wrapper.
+        // `content`, the master data under `extension.product`, inside its own
+        // `{resource, content, view, extension}` wrapper.
         self::assertSame('NL4FX-4', $variant1Product['code']);
         self::assertSame('NL4FX-4 Variant', $variant1Content['title']);
         self::assertSame('NL4FX-5', $variant2Product['code']);
