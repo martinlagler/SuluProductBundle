@@ -112,7 +112,6 @@
             </field>
         </case-property>
 
-        <!-- the group uuid: never a column, it carries the group filter of the list and the selection overlay -->
         <property name="group" translation="sulu_product.attribute_group" visibility="never">
             <field-name>uuid</field-name>
             <entity-name>Sulu\Product\Domain\Model\AttributeGroupInterface</entity-name>
