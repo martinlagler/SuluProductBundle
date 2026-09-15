@@ -1304,7 +1304,6 @@ final class SuluProductBundle extends AbstractBundle
             ->args([
                 new Reference('doctrine.orm.entity_manager'),
                 tagged_iterator('sulu_product.website_product_reindex_provider_enhancer'),
-                '%sulu_product.variant_query_parameter%',
             ])
             ->tag('cmsig_seal.reindex_provider');
 
@@ -1313,9 +1312,11 @@ final class SuluProductBundle extends AbstractBundle
             $services->set('sulu_product.website_product_details_reindex_provider_enhancer')
                 ->class(WebsiteProductDetailsReindexProviderEnhancer::class)
                 ->args([
+                    new Reference('doctrine.orm.entity_manager'),
                     new Reference('sulu_product.measurement_registry'),
                 ])
-                ->tag('sulu_product.website_product_reindex_provider_enhancer', ['priority' => -10]);
+                ->tag('sulu_product.website_product_reindex_provider_enhancer', ['priority' => -10])
+                ->tag('kernel.reset', ['method' => 'reset']);
 
             $services->set('sulu_product.product_schema_loader')
                 ->class(ProductSchemaLoader::class)
